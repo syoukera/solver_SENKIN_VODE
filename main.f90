@@ -30,7 +30,7 @@ program test_main
       
       !   ------- end of user input data ---------
 
-      call initialize_chemkin_workarray
+      call initialize_chemkin_workarray(pressure)
 
       call get_tranport_data(temperature, pressure, y, num_spec, &
                              D_mix, Lambda_mix, c_p)
@@ -39,8 +39,7 @@ program test_main
       ! write(6, *) Lambda_mix
       ! write(6, *) c_p
 
-      call solve_senkin(temperature, y, pressure, time_end, & 
-                        tolerances, num_spec)
+      call solve_senkin(temperature, y, time_end, tolerances, num_spec)
 
       write(6, *) 'write from test_main'
       write(6, *) temperature, y
@@ -80,32 +79,32 @@ end subroutine get_tranport_data
 
 !   ----------------------------------------
 
-subroutine solve_senkin(temperature, y, pressure_Pa, time_end, & 
-                        tolerances, num_spec)
+subroutine solve_senkin(temperature, y, time_end, tolerances, num_spec)
+      use dvode_f90_m
+
       real(8), intent(inout) :: temperature
       real(8), intent(inout) :: y(num_sepc)
-      real(8), intent(in)    :: pressure_Pa
       real(8), intent(in)    :: time_end
       real(8), intent(in)    :: tolerances(4)
 
-      real(8) pressure_CK      ! Dyne/cm**2
       real(8) :: z(num_spec+1) ! vector of variables for ODE
       real(8) :: time = 0.0d0  ! s
       real(8) :: dt = 1.0d-3   ! s
 
+      type(vode_opts) :: options
 
-      ! CALL DDINIT (NSYS, ISEN(5), TIM, RPAR, IPAR, ZP, Z,
-      ! 1             IRES, ISEN(1), ISEN(4), RES, DRES)
+      ! vode options
+      ! options = set_normal_opts(dens_j=.true., relerr=rtol, abserr=atol)
 
       ! put variables to vector
-      pressure_CK = pressure_Pa*10d0 ! Pa to Dyne/cm**2
       z(1) = temperature
       z(2:num_spec+1) = y
       
       do while (time < time_end)
             time_out = time + dt
             
-            call timestep(time)
+            ! call dvode_f90(rconp_fex, num_spec+1, z, time, &
+            !       TOUT,ITASK,ISTATE,OPTIONS)
             
             time = time_out
       enddo
@@ -121,21 +120,9 @@ end subroutine solve_senkin
    
 !   ----------------------------------------
 
-subroutine timestep(time)
-      real(8), intent(in) :: time
-      
-      ! call dvode_f90(rconp_fex, num_eqns, z, time, time_out,        &
-      !               itask, istate, options, j_fcn=jex))
-      write(mout, *) 'time = ', time
-    
-end subroutine timestep
-
-!   ----------------------------------------
-
-subroutine rconp_fex(pressure_ck, z)
+subroutine rconp_fex(neq, time, z, zdot)
       use chemkin_params
 
-      real(8), intent(in) :: pressure_ck
       real(8), intent(in) :: z(kk)
 
       real(8) rho      ! gm/cm**3
@@ -152,9 +139,9 @@ subroutine rconp_fex(pressure_ck, z)
       enddo
       
       ! get rho, c_pb, wdot, enthalpy
-      call ckrhoy(pressure_ck, z(1), z(2:), int_ckwk, real_ckwk, rho) 
+      call ckrhoy(pressure, z(1), z(2:), int_ckwk, real_ckwk, rho) 
       call ckcpbs(z(1), z(2), int_ckwk, real_ckwk, c_pb)
-      call ckwyp(pressure_ck, z(1), z(2), int_ckwk, real_ckwk, wdot)
+      call ckwyp(pressure, z(1), z(2), int_ckwk, real_ckwk, wdot)
       call ckhms(z(1), int_ckwk, real_ckwk, enthalpy)
       
       if (rho < 0.0) then

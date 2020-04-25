@@ -17,11 +17,14 @@ module chemkin_params
     integer ii ! number of reactions
     integer iprck, iprd, ipwt, ipwdot, iph, ipick, lout
 
+    real(8) pressure ! Dyne/cm**2
+
     contains
 
-    subroutine initialize_chemkin_workarray()
+    subroutine initialize_chemkin_workarray(pressure_Pa)
     
         integer, parameter :: unit_stdout = 6
+        real(8), intent(in) :: pressure_Pa
 
         ! length of work array
         integer len_logi_ckwk
@@ -66,6 +69,9 @@ module chemkin_params
         lout   = int_ckwk(10)
         ii     = int_ckwk(11) ! num_reac
     
+        !   ------- initialize pointer integer ---------
+        pressure = pressure_Pa*10d0
+
     end subroutine initialize_chemkin_workarray
 
 end module chemkin_params
