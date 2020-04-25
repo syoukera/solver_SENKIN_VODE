@@ -1,10 +1,5 @@
 !     test code for obtaining chemkin transport data
 
-!     general parameter indempendent from each cells 
-
-
-!   ----------------------------------------
-
 program test_main
       use chemkin_params, only : initialize_chemkin_workarray
 
