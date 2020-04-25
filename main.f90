@@ -1,4 +1,4 @@
-!     test code for obtaining chemkin transport data
+!     solve senkin problem using VODE
 
 program test_main
       use chemkin_params, only : initialize_chemkin_workarray
@@ -8,37 +8,37 @@ program test_main
       integer,parameter :: num_spec = 53
       
       ! phisycal values from CFD calculation
-      real(8) :: t_cfd = 298d0       ! K
-      real(8) :: p_cfd = 1.01325d5   ! Pa
-      real(8) y_cfd(num_spec)        ! Mass fractions
+      real(8) :: pressure = 1.01325d5 ! Pa
+      real(8) :: temperature = 298d0  ! K
+      real(8)    y(num_spec)          ! Mass fractions
+      real(8) :: time_end = 1.0d-12   ! s
+      real(8) :: tolerances(4)        ! Tolerances
 
       ! output transport data
-      ! mixture diffusion coefficient [CM**2/S]
-      real(8) :: D_mix(num_spec) 
-      ! mixture thermal conductivity [ERG/CM*K*S]
-      real(8) :: Lambda_mix
-      !  mean specific heat at constant pressure [ergs/(gm*K)]
-      real(8) c_p
+      real(8) :: D_mix(num_spec) ! mixture diffusion coefficient [CM**2/S]
+      real(8) :: Lambda_mix ! mixture thermal conductivity [ERG/CM*K*S]
+      real(8) c_p !  mean specific heat at constant pressure [ergs/(gm*K)]
       
       ! Assurme Y has a same secuence as species in ckout
-      data y_cfd /0.00d+00,0.00d+00,0.00d+00,2.20d-01,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00, &
-                  0.00d+00,0.00d+00,0.00d+00,0.00d+00,5.51d-02,0.00d+00,0.00d+00,0.00d+00,0.00d+00, &
-                  0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00, &
-                  0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00, &
-                  0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00, &
-                  0.00d+00,0.00d+00,7.24d-01,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00/
-
+      data y          /0.00d+00,0.00d+00,0.00d+00,2.20d-01,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00, &
+                       0.00d+00,0.00d+00,0.00d+00,0.00d+00,5.51d-02,0.00d+00,0.00d+00,0.00d+00,0.00d+00, &
+                       0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00, &
+                       0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00, &
+                       0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00, &
+                       0.00d+00,0.00d+00,7.24d-01,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00/
+      data tolerances /1.d-8, 1.d-20, 1.d-5, 1.d-5/
+      
       !   ------- end of user input data ---------
 
       call initialize_chemkin_workarray
 
-      call get_tranport_data(t_cfd, p_cfd, y_cfd, num_spec, &
+      call get_tranport_data(temperature, pressure, y, num_spec, &
                              D_mix, Lambda_mix, c_p)
 
       write(6, *) D_mix
       write(6, *) Lambda_mix
       write(6, *) c_p
-
+                       
 end program test_main
 
 !   ----------------------------------------
