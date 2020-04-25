@@ -1,0 +1,5 @@
+link/*
+*.o
+*.mod
+solve_senkin
+output/*
