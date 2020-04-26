@@ -9,7 +9,7 @@ program test_main
       
       ! phisycal values from CFD calculation
       real(8) :: pressure = 1.01325d5 ! Pa
-      real(8) :: temperature = 298d0  ! K
+      real(8) :: temperature = 1000d0  ! K
       real(8)    y(num_spec)          ! Mass fractions
       real(8) :: time_end = 1.0d0     ! s
       real(8) :: tolerances(2)        ! Tolerances
@@ -27,7 +27,7 @@ program test_main
                        0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00, &
                        0.00d+00,0.00d+00,7.24d-01,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00/
       
-      data tolerances /1.d-8, 1.d-20/ ! absolute and relative error tolerances
+      data tolerances /1.d-5, 1.d-5/ ! absolute and relative error tolerances
       
       !   ------- end of user input data ---------
 
@@ -84,11 +84,12 @@ subroutine solve_senkin(temperature, y, time_end, tolerances, num_spec)
       use dvode_f90_m
 
       real(8), intent(inout) :: temperature
-      real(8), intent(inout) :: y(num_sepc)
+      real(8), intent(inout) :: y(num_spec)
       real(8), intent(in)    :: time_end
       real(8), intent(in)    :: tolerances(2)
 
       real(8) :: z(num_spec+1) ! vector of variables for ODE
+      real(8) :: zdot(num_spec+1) ! vector of variables for ODE
       real(8) :: time = 0.0d0  ! s
       real(8) :: dt = 1.0d-3   ! s
       real(8) :: time_out      ! s
@@ -120,6 +121,9 @@ subroutine solve_senkin(temperature, y, time_end, tolerances, num_spec)
 
       enddo
 
+      ! call rconp_fex(num_spec+1, time, z, zdot)
+
+
       ! return variables from vector
       temperature = z(1)
       y = z(2:num_spec+1)
@@ -134,20 +138,20 @@ subroutine rconp_fex(neq, time, z, zdot)
       real(8), intent(in) :: z(neq)
       real(8), intent(out) :: zdot(neq)
 
-      real(8) rho      ! gm/cm**3
-      real(8) c_pb     ! ergs/(gm*K) 
-      real(8) volume   ! cm**3/gm
-      real(8) :: wdot(neq)     ! moles/(cm**3*sec)
-      real(8) :: enthalpy(neq) ! ergs/gm
+      real(8) rho             ! gm/cm**3
+      real(8) c_pb            ! ergs/(gm*K) 
+      real(8) volume          ! cm**3/gm
+      real(8) :: wdot(kk)     ! moles/(cm**3*sec)
+      real(8) :: enthalpy(kk) ! ergs/gm
       integer i
 
       ! ---------- prepare phisical values ----------
       ! pertubation factor
-      do i = 1, ii
-            call ckrdex(-i, real_ckwk, real_ckwk(iprd+i-1))
-      enddo
+      ! do i = 1, ii
+      !       call ckrdex(-i, real_ckwk, real_ckwk(iprd+i-1))
+      ! enddo
       
-      ! get rho, c_pb, wdot, enthalpy
+      ! get rho, c_pb, wdot, enthalpy, wt
       call ckrhoy(pressure, z(1), z(2:), int_ckwk, real_ckwk, rho) 
       call ckcpbs(z(1), z(2), int_ckwk, real_ckwk, c_pb)
       call ckwyp(pressure, z(1), z(2), int_ckwk, real_ckwk, wdot)
@@ -158,6 +162,10 @@ subroutine rconp_fex(neq, time, z, zdot)
       endif
       volume = 1.0d0/rho
 
-      zdot(:) = 1.0d0
+      ! ---------- energey equation ----------
+      zdot(1) = zdot(1) + volume*sum(enthalpy*wdot*wt)/c_pb
+      
+      ! ---------- species equations ----------
+      zdot(2:neq) = zdot(2:neq) - wdot*wt*volume
 
 end subroutine rconp_fex

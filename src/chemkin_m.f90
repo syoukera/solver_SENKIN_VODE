@@ -13,11 +13,14 @@ module chemkin_params
     real(8),      allocatable :: real_tpwk(:)
 
     ! array pointers
+    integer mm ! number of elements
     integer kk ! number of species
     integer ii ! number of reactions
-    integer iprck, iprd, ipwt, ipwdot, iph, ipick, lout
+    integer nift ! number of fitting coefficients
 
-    real(8) pressure ! Dyne/cm**2
+    ! constant physical values
+    real(8) pressure              ! Dyne/cm**2
+    real(8), allocatable :: wt(:) ! Molecular weights gm/mole
 
     contains
 
@@ -59,18 +62,12 @@ module chemkin_params
 
         !   ------- initialize pointer integer ---------
 
-        kk     = int_ckwk(1) ! num_spec
-        iprck  = int_ckwk(2)
-        iprd   = int_ckwk(3)
-        ipwt   = int_ckwk(6)
-        ipwdot = int_ckwk(7)
-        iph    = int_ckwk(8)
-        ipick  = int_ckwk(9)
-        lout   = int_ckwk(10)
-        ii     = int_ckwk(11) ! num_reac
+        call ckindx(int_ckwk, real_ckwk, mm, kk, ii, nfit)
     
         !   ------- initialize pointer integer ---------
         pressure = pressure_Pa*10d0
+        allocate(wt(kk))
+        call ckwt(int_ckwk, real_ckwk, wt)
 
     end subroutine initialize_chemkin_workarray
 
