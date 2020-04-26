@@ -11,8 +11,8 @@ program test_main
       real(8) :: pressure = 1.01325d5 ! Pa
       real(8) :: temperature = 298d0  ! K
       real(8)    y(num_spec)          ! Mass fractions
-      real(8) :: time_end = 1.0d0   ! s
-      real(8) :: tolerances(4)        ! Tolerances
+      real(8) :: time_end = 1.0d0     ! s
+      real(8) :: tolerances(2)        ! Tolerances
 
       ! output transport data
       real(8) :: D_mix(num_spec) ! mixture diffusion coefficient [CM**2/S]
@@ -26,7 +26,8 @@ program test_main
                        0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00, &
                        0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00, &
                        0.00d+00,0.00d+00,7.24d-01,0.00d+00,0.00d+00,0.00d+00,0.00d+00,0.00d+00/
-      data tolerances /1.d-8, 1.d-20, 1.d-5, 1.d-5/
+      
+      data tolerances /1.d-8, 1.d-20/ ! absolute and relative error tolerances
       
       !   ------- end of user input data ---------
 
@@ -85,32 +86,39 @@ subroutine solve_senkin(temperature, y, time_end, tolerances, num_spec)
       real(8), intent(inout) :: temperature
       real(8), intent(inout) :: y(num_sepc)
       real(8), intent(in)    :: time_end
-      real(8), intent(in)    :: tolerances(4)
+      real(8), intent(in)    :: tolerances(2)
 
       real(8) :: z(num_spec+1) ! vector of variables for ODE
       real(8) :: time = 0.0d0  ! s
       real(8) :: dt = 1.0d-3   ! s
+      real(8) :: time_out      ! s
+
+      integer :: itask = 2
+      integer :: istate = 1
 
       type(vode_opts) :: options
 
+      external rconp_fex
+
       ! vode options
-      ! options = set_normal_opts(dens_j=.true., relerr=rtol, abserr=atol)
+      options = set_normal_opts(dense_j=.true., relerr=tolerances(1), &
+                                abserr=tolerances(2))
 
       ! put variables to vector
       z(1) = temperature
       z(2:num_spec+1) = y
       
+      time_out = time + dt
+      
       do while (time < time_end)
-            time_out = time + dt
             
-            ! call dvode_f90(rconp_fex, num_spec+1, z, time, &
-            !       TOUT,ITASK,ISTATE,OPTIONS)
+            call dvode_f90(f=rconp_fex, neq=num_spec+1, y=z, t=time,  &
+                          tout=time_out, itask=itask, istate=istate, & 
+                          opts=options)
             
-            time = time_out
-      enddo
+            write(6, *) time, itask, istate
 
-      write(6, *) 'write from solve_senkin'
-      write(6, *) z
+      enddo
 
       ! return variables from vector
       temperature = z(1)
@@ -123,13 +131,14 @@ end subroutine solve_senkin
 subroutine rconp_fex(neq, time, z, zdot)
       use chemkin_params
 
-      real(8), intent(in) :: z(kk)
+      real(8), intent(in) :: z(neq)
+      real(8), intent(out) :: zdot(neq)
 
       real(8) rho      ! gm/cm**3
       real(8) c_pb     ! ergs/(gm*K) 
       real(8) volume   ! cm**3/gm
-      real(8) :: wdot(kk)     ! moles/(cm**3*sec)
-      real(8) :: enthalpy(kk) ! ergs/gm
+      real(8) :: wdot(neq)     ! moles/(cm**3*sec)
+      real(8) :: enthalpy(neq) ! ergs/gm
       integer i
 
       ! ---------- prepare phisical values ----------
@@ -148,5 +157,7 @@ subroutine rconp_fex(neq, time, z, zdot)
             write (mout,*) 'Stop, zero density.'
       endif
       volume = 1.0d0/rho
+
+      zdot(:) = 1.0d0
 
 end subroutine rconp_fex
